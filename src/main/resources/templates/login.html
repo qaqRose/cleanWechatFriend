@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport"
+          content="width=device-width, user-scalable=no, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>使用微信扫码登录</title>
+
+    <link rel="stylesheet" href="css/ele.css">
+    <link rel="stylesheet" href="css/common.css">
+    <script src="js/common.js"></script>
+    <script src="https://cdn.bootcss.com/vue/2.6.11/vue.min.js"></script>
+    <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+    <!-- 引入样式 -->
+    <link rel="stylesheet" href="https://unpkg.com/element-ui/lib/theme-chalk/index.css">
+    <!-- 引入组件库 -->
+    <script src="https://unpkg.com/element-ui/lib/index.js"></script>
+
+</head>
+<body>
+<div id="app">
+    <el-container>
+        <el-container>
+            <el-main>
+                <el-row type="flex">
+                    <el-col :span="24">
+                        <el-button type="primary"
+                                   @click="login"
+                                   v-loading.fullscreen.lock="loading"
+                        >点击获取登录二维码</el-button>
+                        <el-dialog :visible.sync="centerDialogVisible"
+                                   title="使用微信扫一扫"
+                                   width="100%"
+                                   center>
+                            <div class="block">
+                                <el-image :src="src">
+                                    <div slot="placeholder" class="image-slot">
+                                        加载中<span class="dot">...</span>
+                                    </div>
+                                </el-image>
+                                <p>请在 {{timeout}} 秒内扫码登录</p>
+                            </div>
+                        </el-dialog>
+                    </el-col>
+                </el-row>
+            </el-main>
+        </el-container>
+    </el-container>
+
+</div>
+
+<script>
+    var app = new Vue({
+        el: '#app',
+        data: {
+            centerDialogVisible:  false,
+            src: '',
+            loading: false,
+            timer: false,       // 定时器
+            timeout: 30,        // 超时时间
+        },
+
+        methods: {
+            async getQrCodeImgUrl() {
+               await axios.post('/wx/login/qr').then(function (res) {
+                        let data = res.data;
+                        app.loading = false;
+                        if(data.code == 1) {
+                            console.log("data", data);
+                            app.src = data.data.url;
+                            app.centerDialogVisible = true;
+                            app.cleanImg();
+                        } else {
+                            app.$message.error('清粉程序正被别人使用, 请稍后再试');
+                        }
+                }).catch(function (err) {
+                    console.log(err);
+                    app.loading = false;
+                });
+            },
+            login() {
+                app.loading = true
+                app.getQrCodeImgUrl();
+            },
+            cleanImg() {
+                app.timer = setInterval(function(){
+                    app.timeout -= 1;
+                    console.log("app.timeout", app.timeout)
+                    if(app.timeout <= 0) {
+                        console.log("cleanTimer")
+                        app.cleanTimer()
+                        app.src = "";
+                        app.centerDialogVisible = false;
+                        app.timeout = 30;
+                        app.$message("请重新点击获取二维码")
+                    }
+                }, 1000);
+            },
+            cleanTimer() {
+                clearInterval(app.timer);
+            },
+        },
+
+    });
+</script>
+</body>
+</html>
