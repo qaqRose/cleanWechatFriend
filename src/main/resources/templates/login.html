@@ -32,7 +32,8 @@
                         <el-dialog :visible.sync="centerDialogVisible"
                                    title="使用微信扫一扫"
                                    width="100%"
-                                   center>
+                                   center
+                                   :before-close="handleClose">
                             <div class="block">
                                 <el-image :src="src">
                                     <div slot="placeholder" class="image-slot">
@@ -42,6 +43,18 @@
                                 <p>请在 {{timeout}} 秒内扫码登录</p>
                             </div>
                         </el-dialog>
+                    </el-col>
+                </el-row>
+                <el-row type="flex" justify="end">
+                    <el-col :span="24" style="text-align: left;">
+                        <h3>使用提示</h3>
+                        <p><strong>1</strong>. 建议先将<strong>文件传输助手</strong>置顶,<a href="https://kf.qq.com/touch/faq/1208117b2mai150423FvMj22.html" target="_blank">使用方法</a></p>
+                        <p><strong>2</strong>. 获取登录二维码为抢占式请求, 即同一时刻只有一个用户使用</p>
+                        <p><strong>3</strong>. 由于第2点, 所以请不要长期占用</p>
+                        <p><strong>4</strong>. 清粉程序在扫描登录成功将自动启动, 请<strong>谨慎</strong>选择</p>
+                        <p><strong>5</strong>. 清粉原理是给每一个用户发送一条消息, 不是好友将会特定回复,以此得知,所以可能有打扰了其他好友,同样<strong>谨慎</strong>选择</p>
+                        <p><strong>6</strong>. 由于模拟一定登录次数之后, 微信方面会提示安全问题, 同样<strong>谨慎</strong>选择</p>
+                        <p><strong>7</strong>. 欢迎关注我的微信公众号: <strong>星点学习</strong></p>
                     </el-col>
                 </el-row>
             </el-main>
@@ -66,13 +79,19 @@
                await axios.post('/wx/login/qr').then(function (res) {
                         let data = res.data;
                         app.loading = false;
+                        console.log("data", data);
                         if(data.code == 1) {
-                            console.log("data", data);
+                            // console.log("data", data);
                             app.src = data.data.url;
                             app.centerDialogVisible = true;
                             app.cleanImg();
                         } else {
-                            app.$message.error('清粉程序正被别人使用, 请稍后再试');
+                            // type: 'warning'
+                            app.$message({
+                                showClose: true,
+                                message: '清粉程序正被别人使用, 请稍后再试',
+                                type: 'warning'
+                            });
                         }
                 }).catch(function (err) {
                     console.log(err);
@@ -93,12 +112,28 @@
                         app.src = "";
                         app.centerDialogVisible = false;
                         app.timeout = 30;
-                        app.$message("请重新点击获取二维码")
+                        // app.$message({
+                        //     showClose: true,
+                        //     message: "请重新点击获取二维码",
+                        //     type: 'warning'
+                        // })
                     }
                 }, 1000);
             },
             cleanTimer() {
                 clearInterval(app.timer);
+            },
+            handleClose(done) {
+                    this.$confirm('确认关闭？', '提示', {
+                        confirmButtonText: '确定',
+                        cancelButtonText: '取消',
+                        type: 'warning',
+                        center: true
+                    }).then(function() {
+                        done();
+                    }).catch(
+                        function(){}
+                    );
             },
         },
 

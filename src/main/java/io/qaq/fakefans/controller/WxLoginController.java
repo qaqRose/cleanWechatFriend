@@ -91,11 +91,12 @@ public class WxLoginController {
 				}
 				// 启动程序(后台线程)
 				loginService.login(loginService);
-				for (int i = 1; i <= 10 ; i++) {
+				// 30 秒超时
+				for (int i = 1; i <= 30 ; i++) {
 					if (!FileUtil.exist(qrImageFilePath)) {
 						// 获取不到, 休眠1秒
 						Thread.sleep(1000);
-						if(i == 10) {
+						if(i == 30) {
 							return Result.build(ResultType.NET_ERROR);
 						}
 					}
