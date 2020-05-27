@@ -60,7 +60,8 @@ public class WxLoginController {
 	@GetMapping(value = "/img/{fileName}",  produces = MediaType.IMAGE_JPEG_VALUE)
 	@ResponseBody
 	public byte[] img(@PathVariable("fileName") String fileName) {
-		String file = qrCodePath +"//"+ DateUtil.today()+"//"+fileName;
+		String userDir = System.getProperty("user.dir");
+		String file = userDir + "//" + qrCodePath +"//"+ DateUtil.today()+"//"+fileName;
 		if(FileUtil.exist(file)) {
 			return FileUtil.readBytes(file);
 		}
@@ -85,7 +86,9 @@ public class WxLoginController {
 			}
 			try {
 				// 获取二维码地址
-				String qrImageFilePath = qrCodePath+"//QR.jpg";
+				String userDir = System.getProperty("user.dir");
+
+				String qrImageFilePath = userDir +"//" + qrCodePath+"//QR.jpg";
 				if(FileUtil.exist(qrImageFilePath)) {
 					FileUtil.del(qrImageFilePath);
 				}
@@ -103,7 +106,7 @@ public class WxLoginController {
 				}
 				//随机
 				String imgName = UUID.randomUUID().toString() + ".jpg";
-				String newFile = qrCodePath +"//"+ DateUtil.today() +"//"+ imgName;
+				String newFile = userDir + "//" + qrCodePath +"//"+ DateUtil.today() +"//"+ imgName;
 
 				log.info("newFile, {}", newFile);
 				// 复制

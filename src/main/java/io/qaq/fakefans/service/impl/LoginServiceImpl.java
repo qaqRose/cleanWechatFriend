@@ -43,6 +43,9 @@ public class LoginServiceImpl implements LoginService {
 	 */
 	@Override
 	public void login(LoginService loginService) {// 判断文件
+		String userDir = System.getProperty("user.dir");
+		log.info("用户目录, {}", userDir);
+		qrCodePath = userDir+ "//" +qrCodePath;
 		if(FileUtil.isFile(qrCodePath)) {
 			throw new RuntimeException("qrcode.image.path 应该是一个目录地址");
 		}
