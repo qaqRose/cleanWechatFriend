@@ -1,6 +1,7 @@
 package io.qaq.fakefans.service.impl;
 
 import cn.hutool.core.io.FileUtil;
+import cn.hutool.core.util.StrUtil;
 import cn.zhouyafeng.itchat4j.Wechat;
 import cn.zhouyafeng.itchat4j.api.WechatTools;
 import io.qaq.fakefans.handler.CustomHandler;
@@ -12,6 +13,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.io.File;
+import java.util.Objects;
 
 /**
  * @author: qiu
@@ -23,14 +25,24 @@ public class LoginServiceImpl implements LoginService {
 	private final CustomHandler customHandler;
 	private final CleanService cleanService;
 
+	@Value("${qrcode.image.path}")
+	private String qrCodePath;
+
+	@Value("${scan.waitTime}")
+	private Integer waitTime;
+
+	/**二维码文件目录 */
+	private String qrCodeFileUrl;
+
+	/** 微信类 */
+	private Wechat wechat;
+
 	public LoginServiceImpl(CustomHandler customHandler,
 	                        CleanService cleanService) {
 		this.customHandler = customHandler;
 		this.cleanService = cleanService;
 	}
 
-	@Value("${qrcode.image.path}")
-	private String qrCodePath;
 
 	/**
 	 * 由内容控制
@@ -38,37 +50,49 @@ public class LoginServiceImpl implements LoginService {
 	 */
 	private volatile static boolean hasUserLogin = false;
 
+	private void init() {
+		if(StrUtil.isBlank(qrCodeFileUrl)) {
+			qrCodeFileUrl = qrCodePath;
+			log.info("二维码目录, {}", qrCodePath);
+
+			if(FileUtil.isFile(qrCodeFileUrl)) {
+				log.warn("配置qrcode.image.path 应该是一个目录地址, {}", qrCodeFileUrl);
+				qrCodeFileUrl = FileUtil.getParent(qrCodeFileUrl, 1);
+				log.info("获取父级目录: {}", qrCodeFileUrl);
+			}
+			boolean exist = FileUtil.exist(qrCodeFileUrl);
+			if(!exist) {
+				//不存在, 则创建
+				FileUtil.mkdir(qrCodeFileUrl);
+			}
+
+			if(Objects.isNull(wechat)) {
+				// 保存登陆二维码图片的路径，这里需要在本地新建目录
+				wechat = new Wechat(customHandler, qrCodeFileUrl);
+			}
+		}
+	}
+
 	/**
 	 * 后台线程处理
 	 */
 	@Override
 	public void login(LoginService loginService) {// 判断文件
-		String userDir = System.getProperty("user.dir");
-		log.info("用户目录, {}", userDir);
-		qrCodePath = userDir+ "//" +qrCodePath;
-		if(FileUtil.isFile(qrCodePath)) {
-			throw new RuntimeException("qrcode.image.path 应该是一个目录地址");
-		}
-		boolean exist = FileUtil.exist(qrCodePath);
-		if(!exist) {
-			//不存在, 则创建
-			FileUtil.mkdir(qrCodePath);
-		}
+		init();
 		new Thread(new Runnable() {
 			@Override
 			public void run() {
-				// 保存登陆二维码图片的路径，这里需要在本地新建目录
-				String qrPath = qrCodePath;
 				hasUserLogin = true;
 				// 设置30秒内未登录, 解锁登录
-				DeadlineThread dead = new DeadlineThread(loginService);
+				DeadlineThread dead = new DeadlineThread(loginService, waitTime);
 				dead.start();
-				// 【注入】
 				// 启动服务，会在qrPath下生成一张二维码图片，扫描即可登陆，
-				Wechat wechat = new Wechat(customHandler, qrPath);
+				wechat.login();
 				if(checkLoginType()) {
 					// 停止线程
 					dead.stopDeadLine();
+				} else {
+					return;
 				}
 				// 注意，二维码图片如果超过一定时间未扫描会过期，过期时会自动更新，所以你可能需要重新打开图片
 				wechat.start();
@@ -82,6 +106,7 @@ public class LoginServiceImpl implements LoginService {
 
 	@Override
 	public void logout() {
+		wechat.stop();
 		WechatTools.logout();
 		setHasUserLogin(false);
 	}

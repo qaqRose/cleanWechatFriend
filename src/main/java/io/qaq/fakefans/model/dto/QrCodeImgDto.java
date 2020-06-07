@@ -7,9 +7,15 @@ import lombok.Data;
  * 二维码
  */
 @Data
-public class QrCodeImg {
+public class QrCodeImgDto {
 	/**
 	 * 二维码地址
 	 */
 	private String url;
+
+	/**
+	 * 等待时长
+	 * 单位: 秒
+	 */
+	private Integer waitTime;
 }

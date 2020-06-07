@@ -3,22 +3,18 @@ package io.qaq.fakefans.controller;
 
 import cn.hutool.core.date.DateUtil;
 import cn.hutool.core.io.FileUtil;
-import cn.hutool.core.util.RandomUtil;
-import io.qaq.fakefans.model.dto.QrCodeImg;
+import io.qaq.fakefans.model.dto.QrCodeImgDto;
 import io.qaq.fakefans.model.entity.Result;
 import io.qaq.fakefans.model.enums.ResultType;
-import io.qaq.fakefans.service.CleanService;
-import io.qaq.fakefans.service.FriendService;
 import io.qaq.fakefans.service.LoginService;
-import io.qaq.fakefans.service.MsgService;
-import io.qaq.fakefans.thread.DeadlineThread;
+import io.qaq.fakefans.util.CmdUtil;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.Date;
+import java.io.File;
 import java.util.UUID;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
@@ -32,8 +28,16 @@ import java.util.concurrent.locks.ReentrantLock;
 @RequestMapping("wx")
 public class WxLoginController {
 
+	@Value("${scan.waitTime}")
+	private Integer waitTime;
+
 	@Value("${qrcode.image.path}")
 	private String qrCodePath;
+
+	@Value("${restart.cmd}")
+	private String restartSh;
+
+	private Integer loginTime = 0;
 
 	private Lock lock = new ReentrantLock();
 
@@ -60,8 +64,7 @@ public class WxLoginController {
 	@GetMapping(value = "/img/{fileName}",  produces = MediaType.IMAGE_JPEG_VALUE)
 	@ResponseBody
 	public byte[] img(@PathVariable("fileName") String fileName) {
-		String userDir = System.getProperty("user.dir");
-		String file = userDir + "//" + qrCodePath +"//"+ DateUtil.today()+"//"+fileName;
+		String file = qrCodePath +File.separator+ DateUtil.today()+File.separator+fileName;
 		if(FileUtil.exist(file)) {
 			return FileUtil.readBytes(file);
 		}
@@ -79,42 +82,50 @@ public class WxLoginController {
 			return Result.build(ResultType.ERROR);
 		}
 		lock.lock();
-		QrCodeImg img = new QrCodeImg();
+		QrCodeImgDto img = new QrCodeImgDto();
 		try {
 			if(loginService.hasUserLogin()) {
 				return Result.build(ResultType.ERROR);
 			}
+			// 没人登录
+			if(loginTime >= 2) {
+				log.info("登录次数为 {}, 正在重新启动", loginTime);
+				// 应用重启
+				CmdUtil.call(restartSh);
+			}
+			loginTime += 1;
 			try {
 				// 获取二维码地址
-				String userDir = System.getProperty("user.dir");
-
-				String qrImageFilePath = userDir +"//" + qrCodePath+"//QR.jpg";
+				String qrImageFilePath = qrCodePath+ File.separator +"QR.jpg";
 				if(FileUtil.exist(qrImageFilePath)) {
 					FileUtil.del(qrImageFilePath);
 				}
 				// 启动程序(后台线程)
 				loginService.login(loginService);
 				// 30 秒超时
-				for (int i = 1; i <= 30 ; i++) {
+				for (int i = 1; i <= waitTime ; i++) {
 					if (!FileUtil.exist(qrImageFilePath)) {
 						// 获取不到, 休眠1秒
 						Thread.sleep(1000);
-						if(i == 30) {
+						log.warn("{} 文件不存在, 时间: {}s", qrImageFilePath, i);
+						if(i == waitTime) {
 							return Result.build(ResultType.NET_ERROR);
 						}
+					} else  {
+						log.info("{} 找到文件", qrImageFilePath);
+						break;
 					}
 				}
 				//随机
 				String imgName = UUID.randomUUID().toString() + ".jpg";
-				String newFile = userDir + "//" + qrCodePath +"//"+ DateUtil.today() +"//"+ imgName;
+				String newFile = qrCodePath +File.separator+ DateUtil.today() +File.separator+ imgName;
 
 				log.info("newFile, {}", newFile);
 				// 复制
 				FileUtil.copy(qrImageFilePath, newFile, true);
-				// 复制之后把原文件删除, 确保只要一个
-				FileUtil.del(qrImageFilePath);
 				// 地址
 				img.setUrl("/wx/img/" + imgName);
+				img.setWaitTime(waitTime);
 			} catch (Exception e) {
 				e.printStackTrace();
 			}

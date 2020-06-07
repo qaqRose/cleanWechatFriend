@@ -76,13 +76,15 @@
 
         methods: {
             async getQrCodeImgUrl() {
-               await axios.post('/wx/login/qr').then(function (res) {
+                try {
+                    await axios.post('/wx/login/qr').then(function (res) {
                         let data = res.data;
                         app.loading = false;
                         console.log("data", data);
                         if(data.code == 1) {
                             // console.log("data", data);
                             app.src = data.data.url;
+                            app.timeout = data.data.waitTime;
                             app.centerDialogVisible = true;
                             app.cleanImg();
                         } else {
@@ -93,10 +95,24 @@
                                 type: 'warning'
                             });
                         }
-                }).catch(function (err) {
-                    console.log(err);
-                    app.loading = false;
-                });
+                    }).catch(function (err) {
+                        console.log(err);
+                        app.loading = false;
+                        app.$message({
+                            showClose: true,
+                            message: '网络出现点小故障，请稍后再试',
+                            type: 'warning'
+                        });
+                    });
+                } catch (e) {
+                    console.log();
+                    app.$message({
+                        showClose: true,
+                        message: '网络出现点小故障，请稍后再试',
+                        type: 'warning'
+                    });
+                }
+
             },
             login() {
                 app.loading = true
