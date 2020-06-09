@@ -42,7 +42,7 @@ public class CleanServiceImpl implements CleanService {
 			}
 		}
 		msgService.sendToFileHelper(StrUtil.format("您一共有好友: {} 人, 其中男性好友 {} 人, 女性好友 {} 人", friendIds.size(),man, woman));
-		String msg = "hello, 这是一条测试消息, 如果打扰到您, 真的非常抱歉.";
+		String msg = "这是一条机器人消息, 请勿回复, 如果打扰到您, 真的非常抱歉.";
 		msgService.sendToFileHelper(StrUtil.format("正在发送测试消息 : {} ", msg));
 		for (String friendId : friendIds) {
 			msgService.sendById(friendId, msg);

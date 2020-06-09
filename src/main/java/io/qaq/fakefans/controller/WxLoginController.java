@@ -35,9 +35,6 @@ public class WxLoginController {
 	@Value("${qrcode.image.path}")
 	private String qrCodePath;
 
-	@Value("${restart.cmd}")
-	private String restartSh;
-
 	private Integer loginTime = 0;
 
 	private Lock lock = new ReentrantLock();
@@ -90,9 +87,7 @@ public class WxLoginController {
 			}
 			// 没人登录
 			if(loginTime >= 2) {
-				log.info("登录次数为 {}, 正在重新启动", loginTime);
-				// 应用重启
-				CmdUtil.call(restartSh);
+				log.info("登录次数为 {}");
 			}
 			loginTime += 1;
 			try {
