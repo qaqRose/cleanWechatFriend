@@ -7,6 +7,7 @@ import io.qaq.fakefans.model.dto.QrCodeImgDto;
 import io.qaq.fakefans.model.entity.Result;
 import io.qaq.fakefans.model.enums.ResultType;
 import io.qaq.fakefans.service.LoginService;
+import io.qaq.fakefans.thread.DeadlineThread;
 import io.qaq.fakefans.util.CmdUtil;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -81,8 +82,8 @@ public class WxLoginController {
 		if(loginService.hasUserLogin()) {
 			return Result.build(ResultType.ERROR);
 		}
-		lock.lock();
 		QrCodeImgDto img = new QrCodeImgDto();
+		lock.lock();
 		try {
 			if(loginService.hasUserLogin()) {
 				return Result.build(ResultType.ERROR);
@@ -101,18 +102,23 @@ public class WxLoginController {
 					FileUtil.del(qrImageFilePath);
 				}
 				// 启动程序(后台线程)
-				loginService.login(loginService);
+				loginService.login();
 				// 30 秒超时
-				for (int i = 1; i <= waitTime ; i++) {
+				for (int i = 1; i <= waitTime; i++) {
 					if (!FileUtil.exist(qrImageFilePath)) {
 						// 获取不到, 休眠1秒
 						Thread.sleep(1000);
 						log.warn("{} 文件不存在, 时间: {}s", qrImageFilePath, i);
 						if(i == waitTime) {
+							// 获取图片失败, 关闭此次登录请求
+							loginService.cancelLogin();
 							return Result.build(ResultType.NET_ERROR);
 						}
 					} else  {
 						log.info("{} 找到文件", qrImageFilePath);
+						// 启动 deadline 线程, 30秒内不扫码, 取消登录
+						DeadlineThread dead = new DeadlineThread(loginService, waitTime);
+						dead.start();
 						break;
 					}
 				}

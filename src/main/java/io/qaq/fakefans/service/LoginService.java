@@ -5,9 +5,11 @@ package io.qaq.fakefans.service;
  */
 public interface LoginService {
 
-	void login(LoginService loginService);
+	void login();
 
 	void logout();
+
+	void cancelLogin();
 
 	boolean checkLoginType();
 

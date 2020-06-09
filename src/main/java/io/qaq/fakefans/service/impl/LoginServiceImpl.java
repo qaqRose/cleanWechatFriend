@@ -77,24 +77,21 @@ public class LoginServiceImpl implements LoginService {
 	 * 后台线程处理
 	 */
 	@Override
-	public void login(LoginService loginService) {// 判断文件
+	public void login() {// 判断文件
 		init();
 		new Thread(new Runnable() {
 			@Override
 			public void run() {
 				hasUserLogin = true;
-				// 设置30秒内未登录, 解锁登录
-				DeadlineThread dead = new DeadlineThread(loginService, waitTime);
-				dead.start();
 				// 启动服务，会在qrPath下生成一张二维码图片，扫描即可登陆，
 				wechat.login();
 				if(checkLoginType()) {
 					// 停止线程
-					dead.stopDeadLine();
+//					dead.stopDeadLine();
 				} else {
 					return;
 				}
-				// 注意，二维码图片如果超过一定时间未扫描会过期，过期时会自动更新，所以你可能需要重新打开图片
+				// 开始处理消息
 				wechat.start();
 				// 开始清除粉丝
 				cleanService.clean();
@@ -109,6 +106,17 @@ public class LoginServiceImpl implements LoginService {
 		wechat.stop();
 		WechatTools.logout();
 		setHasUserLogin(false);
+	}
+
+	@Override
+	public void cancelLogin() {
+		boolean b = wechat.cancelLogin();
+		setHasUserLogin(false);
+		if(b) {
+			log.info("关闭登录请求成功");
+		} else {
+			log.error("关闭登录请求失败");
+		}
 	}
 
 	/**

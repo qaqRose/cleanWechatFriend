@@ -35,6 +35,7 @@ public class DeadlineThread extends Thread {
 	 */
 	@Override
 	public void run() {
+		log.info("DeadlineThread 启动");
 		// 多出3秒钟, 用于登录时间
 		long deadline = waitTime * 1000 + 3000;
 		log.info("开始时间: {}, 结束时间: {}",
@@ -46,13 +47,16 @@ public class DeadlineThread extends Thread {
 			} catch (InterruptedException e) {
 				e.printStackTrace();
 			}
-			long nowTime = System.currentTimeMillis();
-			if(nowTime - deadline > startTimestamp) {
-				log.error("{} 秒未登录, 设置未登录", waitTime);
-				loginService.setHasUserLogin(false);
+			if(loginService.checkLoginType()) {
 				break;
+			} else {
+				long nowTime = System.currentTimeMillis();
+				if(nowTime - deadline > startTimestamp) {
+					log.error("{} 秒未登录, 设置未登录", waitTime);
+					loginService.cancelLogin();
+					break;
+				}
 			}
-
 		}
 	}
 
